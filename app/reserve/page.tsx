@@ -2,6 +2,10 @@ import { ReservationForm } from "@/components/reservations/reservation-form"
 import { getAllReservations } from "@/lib/actions/reservation-actions"
 import { AnimatedLayout } from "@/components/layout/animated-layout"
 
+// Configuración de caché para asegurar datos frescos
+export const dynamic = "force-dynamic"
+export const revalidate = 0
+
 export default async function ReservePage({
   searchParams,
 }: {

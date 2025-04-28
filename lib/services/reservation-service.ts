@@ -1,20 +1,30 @@
 "use server"
 
 import { createServerSupabaseClient } from "@/lib/supabase/server"
-import { revalidatePath } from "next/cache"
+import { revalidateAllRoutes } from "@/lib/utils/revalidation"
 import type { Reservation, NewReservation } from "@/lib/types/database"
 import { generateCancellationCode } from "@/lib/utils/reservation"
+import { unstable_cache } from "next/cache"
+import { RESERVATION_TAG } from "@/lib/utils/revalidation"
 
-export async function getAllReservations() {
-  const supabase = createServerSupabaseClient()
-  const { data, error } = await supabase.from("reservations").select("*").order("start_time", { ascending: false })
+// Usar unstable_cache con tags para permitir revalidación selectiva
+export const getAllReservations = unstable_cache(
+  async () => {
+    const supabase = createServerSupabaseClient()
+    const { data, error } = await supabase.from("reservations").select("*").order("start_time", { ascending: false })
 
-  if (error) {
-    throw new Error(`Error al obtener las reservas: ${error.message}`)
-  }
+    if (error) {
+      throw new Error(`Error al obtener las reservas: ${error.message}`)
+    }
 
-  return data || []
-}
+    return data || []
+  },
+  ["all-reservations"],
+  {
+    tags: [RESERVATION_TAG],
+    revalidate: 0, // No almacenar en caché
+  },
+)
 
 export async function getTodayReservations() {
   const supabase = createServerSupabaseClient()
@@ -61,9 +71,8 @@ export async function createReservation(reservation: NewReservation) {
     throw new Error(`Error al crear la reserva: ${error.message}`)
   }
 
-  revalidatePath("/calendar")
-  revalidatePath("/historial")
-  revalidatePath("/")
+  // Usar el nuevo mecanismo de revalidación
+  revalidateAllRoutes()
 
   return data
 }
@@ -76,9 +85,8 @@ export async function updateReservation(id: string, reservation: Partial<Reserva
     throw new Error(`Error al actualizar la reserva: ${error.message}`)
   }
 
-  revalidatePath("/calendar")
-  revalidatePath("/historial")
-  revalidatePath("/")
+  // Usar el nuevo mecanismo de revalidación
+  revalidateAllRoutes()
 
   return data
 }
@@ -91,9 +99,8 @@ export async function deleteReservation(id: string) {
     throw new Error(`Error al eliminar la reserva: ${error.message}`)
   }
 
-  revalidatePath("/calendar")
-  revalidatePath("/historial")
-  revalidatePath("/")
+  // Usar el nuevo mecanismo de revalidación
+  revalidateAllRoutes()
 
   return { success: true }
 }
@@ -128,9 +135,8 @@ export async function cancelReservationWithCode(id: string, code: string) {
     throw new Error(`Error al eliminar la reserva: ${deleteError.message}`)
   }
 
-  revalidatePath("/calendar")
-  revalidatePath("/historial")
-  revalidatePath("/")
+  // Usar el nuevo mecanismo de revalidación
+  revalidateAllRoutes()
 
   return { success: true, message: "Reserva cancelada exitosamente" }
 }

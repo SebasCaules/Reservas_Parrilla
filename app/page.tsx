@@ -3,7 +3,10 @@ import { addDays } from "date-fns"
 import { HomeContent } from "@/components/home/home-content"
 import { AnimatedLayout } from "@/components/layout/animated-layout"
 
-// This is now a Server Component (no "use client" directive)
+// Configuración de caché para asegurar datos frescos
+export const dynamic = "force-dynamic"
+export const revalidate = 0
+
 export default async function Home() {
   const today = new Date()
   const tenDaysLater = addDays(today, 10)

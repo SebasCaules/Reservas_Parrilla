@@ -14,6 +14,9 @@ import { AnimatedList } from "@/components/ui/animated-list"
 import { motion } from "framer-motion"
 import type { Reservation } from "@/lib/types/database"
 
+// Importar el botón de actualización
+import { RefreshButton } from "@/components/refresh-button"
+
 interface HomeContentProps {
   upcomingReservations: Reservation[]
   today: Date
@@ -74,7 +77,10 @@ export function HomeContent({ upcomingReservations, today }: HomeContentProps) {
                   <CardHeader>
                     <CardTitle className="flex items-center justify-between">
                       <span>Reservas de los próximos 10 días</span>
-                      <Calendar className="h-5 w-5 text-gray-500" />
+                      <div className="flex items-center gap-2">
+                        <RefreshButton />
+                        <Calendar className="h-5 w-5 text-gray-500" />
+                      </div>
                     </CardTitle>
                     <CardDescription>
                       {upcomingReservations.length === 0

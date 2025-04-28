@@ -2,6 +2,10 @@ import { HistorialList } from "@/components/historial/historial-list"
 import { getAllReservations } from "@/lib/actions/reservation-actions"
 import { AnimatedLayout } from "@/components/layout/animated-layout"
 
+// Configuración de caché para asegurar datos frescos
+export const dynamic = "force-dynamic"
+export const revalidate = 0
+
 export default async function HistorialPage() {
   const reservations = await getAllReservations()
 
