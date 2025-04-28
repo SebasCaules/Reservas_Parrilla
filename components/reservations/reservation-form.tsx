@@ -48,9 +48,11 @@ export function ReservationForm({ existingReservations, initialData, initialDate
     if (initialData) {
       return new Date(initialData.start_time)
     } else if (initialDate) {
-      // Asegurarse de que la fecha se parsea correctamente
-      const parsedDate = new Date(initialDate)
-      return parsedDate
+      // Corregir el problema de zona horaria al parsear la fecha
+      const [year, month, day] = initialDate.split("-").map(Number)
+      // Crear la fecha usando UTC para evitar ajustes de zona horaria
+      // y luego convertirla a fecha local
+      return new Date(year, month - 1, day)
     } else {
       return new Date()
     }
