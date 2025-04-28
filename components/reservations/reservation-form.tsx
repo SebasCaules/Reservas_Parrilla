@@ -21,6 +21,8 @@ import type { Reservation } from "@/lib/types/database"
 import { generateTimeSlots, isValidReservation } from "@/lib/utils/date"
 import { createReservation, updateReservation } from "@/lib/actions/reservation-actions"
 import { AlertMessage } from "@/components/ui/alert-message"
+import { generateCancellationCode, sendReservationEmail } from "@/lib/utils/reservation"
+import { ReservationSuccessDialog } from "./reservation-success-dialog"
 
 interface ReservationFormProps {
   existingReservations: Reservation[]
@@ -33,6 +35,7 @@ export function ReservationForm({ existingReservations, initialData, initialDate
 
   const [isLoading, setIsLoading] = useState(false)
   const [name, setName] = useState(initialData?.name || "")
+  const [email, setEmail] = useState("")
   const [apartmentNumber, setApartmentNumber] = useState(initialData?.apartment_number || "")
   const [title, setTitle] = useState(initialData?.title || "")
   const [description, setDescription] = useState(initialData?.description || "")
@@ -73,6 +76,11 @@ export function ReservationForm({ existingReservations, initialData, initialDate
     : []
 
   const reservationsCount = reservationsForSelectedDate.length
+
+  const [showSuccessDialog, setShowSuccessDialog] = useState(false)
+  const [createdReservation, setCreatedReservation] = useState<any>(null)
+  const [generatedCode, setGeneratedCode] = useState("")
+  const [emailSent, setEmailSent] = useState(false)
 
   // Actualizar horarios disponibles cuando cambia la fecha
   useEffect(() => {
@@ -132,6 +140,16 @@ export function ReservationForm({ existingReservations, initialData, initialDate
     }
   }, [startTime, date, existingReservations, initialData])
 
+  // Función para manejar el cierre del diálogo de éxito
+  const handleSuccessDialogClose = (open: boolean) => {
+    setShowSuccessDialog(open)
+    if (!open) {
+      // Redirigir al calendario cuando se cierra el diálogo
+      router.refresh()
+      router.push("/calendar")
+    }
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setIsLoading(true)
@@ -140,6 +158,17 @@ export function ReservationForm({ existingReservations, initialData, initialDate
       toast({
         title: "Error",
         description: "Por favor selecciona fecha y horarios",
+        variant: "destructive",
+      })
+      setIsLoading(false)
+      return
+    }
+
+    // Validar email
+    if (!email || !/^\S+@\S+\.\S+$/.test(email)) {
+      toast({
+        title: "Error",
+        description: "Por favor ingresa un correo electrónico válido",
         variant: "destructive",
       })
       setIsLoading(false)
@@ -159,6 +188,9 @@ export function ReservationForm({ existingReservations, initialData, initialDate
     }
 
     try {
+      // Generar código de cancelación
+      const cancellationCode = generateCancellationCode()
+
       if (initialData) {
         // Actualizar reserva existente
         await updateReservation(initialData.id, {
@@ -168,31 +200,56 @@ export function ReservationForm({ existingReservations, initialData, initialDate
           description,
           start_time: startTime.toISOString(),
           end_time: endTime.toISOString(),
+          cancellation_code: initialData.cancellation_code || cancellationCode,
         })
 
         toast({
           title: "Reserva actualizada",
           description: "Tu reserva ha sido actualizada exitosamente.",
         })
+
+        // Redirigir inmediatamente para actualizaciones
+        router.refresh()
+        router.push("/calendar")
       } else {
         // Crear nueva reserva
-        await createReservation({
+        const newReservation = await createReservation({
           name,
           apartment_number: apartmentNumber,
           title,
           description,
           start_time: startTime.toISOString(),
           end_time: endTime.toISOString(),
+          cancellation_code: cancellationCode,
         })
+
+        // Intentar enviar correo electrónico
+        const emailResult = await sendReservationEmail(email, newReservation, cancellationCode)
+        setEmailSent(emailResult.success)
+
+        if (!emailResult.success) {
+          // Mostrar una notificación, pero continuar con el proceso
+          toast({
+            title: "Advertencia",
+            description:
+              emailResult.message ||
+              "No se pudo enviar el correo electrónico, pero tu reserva ha sido creada. Por favor, guarda el código de cancelación que se muestra.",
+            variant: "warning",
+          })
+        }
+
+        // Mostrar el diálogo con el código
+        setCreatedReservation(newReservation)
+        setGeneratedCode(cancellationCode)
+        setShowSuccessDialog(true)
 
         toast({
           title: "Reserva creada",
           description: "Tu reserva ha sido creada exitosamente.",
         })
-      }
 
-      router.refresh()
-      router.push("/calendar")
+        // No redirigir automáticamente, esperar a que el usuario cierre el diálogo
+      }
     } catch (error: any) {
       toast({
         title: "Error",
@@ -224,6 +281,22 @@ export function ReservationForm({ existingReservations, initialData, initialDate
           <div className="space-y-2">
             <Label htmlFor="name">Tu Nombre</Label>
             <Input id="name" placeholder="Juan Pérez" value={name} onChange={(e) => setName(e.target.value)} required />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="email">Correo Electrónico</Label>
+            <Input
+              id="email"
+              type="email"
+              placeholder="tu@correo.com"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
+            />
+            <p className="text-xs text-muted-foreground">
+              <span className="text-orange-600 dark:text-orange-400 font-medium">Nota:</span> En este entorno de
+              desarrollo no se envían correos electrónicos. El código de cancelación se mostrará en pantalla.
+            </p>
           </div>
 
           <div className="space-y-2">
@@ -353,13 +426,20 @@ export function ReservationForm({ existingReservations, initialData, initialDate
         <CardFooter>
           <Button
             type="submit"
-            className="w-full bg-orange-600 hover:bg-orange-700"
+            className="w-full bg-orange-600 hover:bg-orange-700 text-white"
             disabled={isLoading || !date || !startTime || !endTime}
           >
             {isLoading ? "Guardando..." : initialData ? "Actualizar Reserva" : "Crear Reserva"}
           </Button>
         </CardFooter>
       </form>
+      <ReservationSuccessDialog
+        open={showSuccessDialog}
+        onOpenChange={handleSuccessDialogClose}
+        reservation={createdReservation}
+        cancellationCode={generatedCode}
+        emailSent={emailSent}
+      />
     </Card>
   )
 }

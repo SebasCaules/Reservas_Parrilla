@@ -13,7 +13,7 @@ export default async function EditReservationPage({
     const reservations = await getAllReservations()
 
     return (
-      <div className="flex min-h-screen flex-col w-full">
+      <div className="flex min-h-screen flex-col w-full mx-2 md:mx-4">
         <SiteHeader />
         <main className="flex-1 container max-w-lg py-8">
           <h1 className="text-3xl font-bold mb-8 text-center">Editar Reserva</h1>

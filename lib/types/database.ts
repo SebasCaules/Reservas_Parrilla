@@ -14,6 +14,7 @@ export interface Database {
           start_time: string
           end_time: string
           created_at: string
+          cancellation_code: string
         }
         Insert: {
           id?: string
@@ -25,6 +26,7 @@ export interface Database {
           start_time: string
           end_time: string
           created_at?: string
+          cancellation_code: string
         }
         Update: {
           id?: string
@@ -36,6 +38,7 @@ export interface Database {
           start_time?: string
           end_time?: string
           created_at?: string
+          cancellation_code?: string
         }
       }
     }

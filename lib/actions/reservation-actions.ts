@@ -3,6 +3,7 @@
 import { createServerSupabaseClient } from "@/lib/supabase/server"
 import { revalidatePath } from "next/cache"
 import type { Reservation, NewReservation } from "@/lib/types/database"
+import { generateCancellationCode } from "@/lib/utils/reservation"
 
 // Obtener todas las reservas
 export async function getAllReservations() {
@@ -52,6 +53,12 @@ export async function getReservationById(id: string) {
 // Crear una nueva reserva
 export async function createReservation(reservation: NewReservation) {
   const supabase = createServerSupabaseClient()
+
+  // Asegurarse de que haya un código de cancelación
+  if (!reservation.cancellation_code) {
+    reservation.cancellation_code = generateCancellationCode()
+  }
+
   const { data, error } = await supabase.from("reservations").insert(reservation).select().single()
 
   if (error) {
@@ -95,4 +102,42 @@ export async function deleteReservation(id: string) {
   revalidatePath("/")
 
   return { success: true }
+}
+
+// Verificar código de cancelación y eliminar reserva
+export async function cancelReservationWithCode(id: string, code: string) {
+  const supabase = createServerSupabaseClient()
+
+  // Primero verificamos que el código sea correcto
+  const { data: reservation, error: fetchError } = await supabase
+    .from("reservations")
+    .select("cancellation_code")
+    .eq("id", id)
+    .single()
+
+  if (fetchError) {
+    throw new Error(`Error al verificar la reserva: ${fetchError.message}`)
+  }
+
+  if (!reservation) {
+    throw new Error("Reserva no encontrada")
+  }
+
+  // Verificar que el código coincida
+  if (reservation.cancellation_code !== code) {
+    return { success: false, message: "Código de cancelación incorrecto" }
+  }
+
+  // Si el código es correcto, eliminar la reserva
+  const { error: deleteError } = await supabase.from("reservations").delete().eq("id", id)
+
+  if (deleteError) {
+    throw new Error(`Error al eliminar la reserva: ${deleteError.message}`)
+  }
+
+  revalidatePath("/calendar")
+  revalidatePath("/historial")
+  revalidatePath("/")
+
+  return { success: true, message: "Reserva cancelada exitosamente" }
 }

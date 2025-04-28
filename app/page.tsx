@@ -30,7 +30,7 @@ export default async function Home() {
   const reservationsToShow = upcomingReservations.slice(0, 4)
 
   return (
-    <div className="flex min-h-screen flex-col w-full">
+    <div className="flex min-h-screen flex-col w-full mx-2 md:mx-4">
       <SiteHeader />
       <main className="flex-1 w-full">
         <section className="w-full py-12 md:py-24 lg:py-32 bg-gradient-to-b from-white to-gray-100 dark:from-gray-900 dark:to-gray-950">
@@ -48,7 +48,7 @@ export default async function Home() {
                 </div>
                 <div className="flex flex-col gap-2 min-[400px]:flex-row">
                   <Link href={`/reserve?date=${format(today, "yyyy-MM-dd")}`}>
-                    <Button size="lg" className="bg-orange-600 hover:bg-orange-700">
+                    <Button size="lg" className="bg-orange-600 hover:bg-orange-700 text-white font-bold tracking-wide">
                       Hacer una Reserva
                     </Button>
                   </Link>
@@ -79,17 +79,19 @@ export default async function Home() {
                         reservationsToShow.map((reservation) => (
                           <div
                             key={reservation.id}
-                            className="flex flex-col space-y-2 p-3 rounded-lg bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-900"
+                            className="flex flex-col p-2 rounded-lg bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-900"
                           >
                             <div className="flex items-center justify-between">
                               <span className="font-medium">{formatDate(reservation.start_time)}</span>
                               <span className="text-sm">{reservation.apartment_number}</span>
                             </div>
-                            <div className="text-sm">
-                              {formatTime(reservation.start_time)} - {formatTime(reservation.end_time)}
-                            </div>
-                            <div className="text-sm text-blue-600 dark:text-blue-400 truncate">
-                              {reservation.title} - {reservation.name}
+                            <div className="flex items-center justify-between">
+                              <div className="text-sm">
+                                {formatTime(reservation.start_time)} - {formatTime(reservation.end_time)}
+                              </div>
+                              <div className="text-sm text-blue-600 dark:text-blue-400 truncate max-w-[60%] text-right">
+                                {reservation.title} - {reservation.name}
+                              </div>
                             </div>
                           </div>
                         ))
@@ -163,7 +165,7 @@ export default async function Home() {
           </div>
         </section>
       </main>
-      <footer className="w-full border-t py-6">
+      <footer className="w-full border-t py-6 mx-2 md:mx-4">
         <div className="container flex flex-col items-center justify-center gap-4 px-4 md:px-6 text-center">
           <p className="text-sm text-gray-500 dark:text-gray-400">
             © {new Date().getFullYear()} Reservas de Parrilla. Todos los derechos reservados.

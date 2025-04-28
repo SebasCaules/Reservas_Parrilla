@@ -11,6 +11,7 @@ import { formatTime, isPastReservation } from "@/lib/utils/date"
 import { format, isSameDay, parseISO, isBefore, startOfDay } from "date-fns"
 import { es } from "date-fns/locale"
 import { CalendarIcon, PlusCircle } from "lucide-react"
+import { CancelReservationDialog } from "./cancel-reservation-dialog"
 
 interface ReservationCalendarProps {
   reservations: Reservation[]
@@ -106,22 +107,31 @@ export function ReservationCalendar({ reservations }: ReservationCalendarProps) 
             }}
             modifiersStyles={{
               oneReservation: {
-                backgroundColor: "rgb(34, 197, 94)",
+                backgroundColor: "rgb(22, 163, 74)", // green-600
                 color: "white",
                 fontWeight: "bold",
               },
               mediumReservations: {
-                backgroundColor: "rgb(234, 179, 8)",
+                backgroundColor: "rgb(245, 158, 11)", // amber-500
                 color: "white",
                 fontWeight: "bold",
               },
               highReservations: {
-                backgroundColor: "rgb(239, 68, 68)",
+                backgroundColor: "rgb(220, 38, 38)", // red-600
                 color: "white",
                 fontWeight: "bold",
               },
               past: {
                 opacity: "0.5",
+              },
+              selected: {
+                borderWidth: "2px",
+                borderColor: "rgb(249, 115, 22)", // orange-500
+                borderStyle: "solid",
+                boxShadow: "0 0 0 2px rgba(255, 255, 255, 0.8) inset",
+                transform: "scale(1.1)",
+                zIndex: "10",
+                position: "relative",
               },
             }}
             disabled={(date) => isBefore(date, startOfDay(today))}
@@ -129,15 +139,15 @@ export function ReservationCalendar({ reservations }: ReservationCalendarProps) 
         </CardContent>
         <CardFooter className="flex flex-col items-start space-y-2">
           <div className="flex items-center space-x-2">
-            <div className="w-4 h-4 rounded-sm bg-green-500"></div>
+            <div className="w-4 h-4 rounded-sm bg-green-600"></div>
             <span className="text-sm">Días con 1 reserva</span>
           </div>
           <div className="flex items-center space-x-2">
-            <div className="w-4 h-4 rounded-sm bg-yellow-500"></div>
+            <div className="w-4 h-4 rounded-sm bg-amber-500"></div>
             <span className="text-sm">Días con 2-3 reservas</span>
           </div>
           <div className="flex items-center space-x-2">
-            <div className="w-4 h-4 rounded-sm bg-red-500"></div>
+            <div className="w-4 h-4 rounded-sm bg-red-600"></div>
             <span className="text-sm">Días con 4 o más reservas</span>
           </div>
         </CardFooter>
@@ -185,7 +195,15 @@ export function ReservationCalendar({ reservations }: ReservationCalendarProps) 
                   >
                     <div className="flex items-center justify-between">
                       <h3 className="font-medium">{reservation.title}</h3>
-                      <span className="text-sm text-muted-foreground">Apto {reservation.apartment_number}</span>
+                      <div className="flex items-center">
+                        <span className="text-sm text-muted-foreground mr-2">Apto {reservation.apartment_number}</span>
+                        {!isPast && (
+                          <CancelReservationDialog
+                            reservationId={reservation.id}
+                            reservationTitle={reservation.title}
+                          />
+                        )}
+                      </div>
                     </div>
                     <div className="text-sm">
                       <span className="font-medium">Horario:</span> {formatTime(reservation.start_time)} -{" "}
