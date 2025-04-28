@@ -22,7 +22,7 @@ export const getAllReservations = unstable_cache(
   ["all-reservations"],
   {
     tags: [RESERVATION_TAG],
-    revalidate: 0, // No almacenar en caché
+    revalidate: false, // Cambiado de 0 a false para evitar el error
   },
 )
 

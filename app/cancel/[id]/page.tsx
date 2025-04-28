@@ -1,10 +1,13 @@
 import { notFound } from "next/navigation"
 import Link from "next/link"
-import { SiteHeader } from "@/components/layout/site-header"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { formatDateTime } from "@/lib/utils/date"
 import { getReservationById, deleteReservation } from "@/lib/actions/reservation-actions"
+import { AnimatedLayout } from "@/components/layout/animated-layout"
+
+// Configuración de caché para asegurar datos frescos
+export const dynamic = "force-dynamic"
 
 export default async function CancelReservationPage({
   params,
@@ -26,8 +29,7 @@ export default async function CancelReservationPage({
   }
 
   return (
-    <div className="flex min-h-screen flex-col">
-      <SiteHeader />
+    <AnimatedLayout>
       <main className="flex-1 container max-w-lg py-8">
         <h1 className="text-3xl font-bold mb-8">Cancelar Reserva</h1>
 
@@ -65,6 +67,6 @@ export default async function CancelReservationPage({
           </CardFooter>
         </Card>
       </main>
-    </div>
+    </AnimatedLayout>
   )
 }
