@@ -4,7 +4,6 @@ import type React from "react"
 
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
-import { createClient } from "@supabase/supabase-js"
 import { Button } from "@/components/ui/button"
 import { Calendar } from "@/components/ui/calendar"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
@@ -13,17 +12,15 @@ import { Label } from "@/components/ui/label"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Textarea } from "@/components/ui/textarea"
 import { toast } from "@/components/ui/use-toast"
-import { format, addMinutes, parseISO } from "date-fns"
+import { format, addMinutes, parseISO, isBefore, startOfDay, isSameDay } from "date-fns"
 import { es } from "date-fns/locale"
-import { CalendarIcon } from "lucide-react"
+import { CalendarIcon, AlertTriangle } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import type { Reservation } from "@/lib/types/database"
 import { generateTimeSlots, isValidReservation } from "@/lib/utils/date"
+import { createReservation, updateReservation } from "@/lib/actions/reservation-actions"
 
-// Modificar el componente para aceptar una fecha inicial y cambiar el campo de apartamento por un selector
-
-// Actualizar la interfaz ReservationFormProps para incluir initialDate
 interface ReservationFormProps {
   existingReservations: Reservation[]
   initialData?: Reservation
@@ -32,24 +29,49 @@ interface ReservationFormProps {
 
 export function ReservationForm({ existingReservations, initialData, initialDate }: ReservationFormProps) {
   const router = useRouter()
-  const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!)
 
   const [isLoading, setIsLoading] = useState(false)
   const [name, setName] = useState(initialData?.name || "")
   const [apartmentNumber, setApartmentNumber] = useState(initialData?.apartment_number || "")
   const [title, setTitle] = useState(initialData?.title || "")
   const [description, setDescription] = useState(initialData?.description || "")
-  // Modificar el useState de date para usar initialDate si está disponible
-  const [date, setDate] = useState<Date | undefined>(
-    initialData ? new Date(initialData.start_time) : initialDate ? new Date(initialDate) : new Date(),
-  )
 
-  const [availableStartTimes, setAvailableStartTimes] = useState<{ time: Date; available: boolean }[]>([])
-  const [availableEndTimes, setAvailableEndTimes] = useState<{ time: Date; available: boolean }[]>([])
+  // Obtener la fecha actual para deshabilitar fechas pasadas
+  const today = new Date()
+
+  // Corregir el problema de fecha
+  const [date, setDate] = useState<Date | undefined>(() => {
+    if (initialData) {
+      return new Date(initialData.start_time)
+    } else if (initialDate) {
+      // Asegurarse de que la fecha se parsea correctamente
+      const parsedDate = new Date(initialDate)
+      return parsedDate
+    } else {
+      return new Date()
+    }
+  })
+
+  const [availableStartTimes, setAvailableStartTimes] = useState<{ time: Date; available: boolean; isPast: boolean }[]>(
+    [],
+  )
+  const [availableEndTimes, setAvailableEndTimes] = useState<{ time: Date; available: boolean; isPast: boolean }[]>([])
   const [startTime, setStartTime] = useState<Date | undefined>(
     initialData ? new Date(initialData.start_time) : undefined,
   )
   const [endTime, setEndTime] = useState<Date | undefined>(initialData ? new Date(initialData.end_time) : undefined)
+
+  // Calcular el número de reservas para el día seleccionado
+  const reservationsForSelectedDate = date
+    ? existingReservations.filter(
+        (reservation) =>
+          isSameDay(parseISO(reservation.start_time), date) &&
+          // Excluir la reserva actual si estamos editando
+          (!initialData || reservation.id !== initialData.id),
+      )
+    : []
+
+  const reservationsCount = reservationsForSelectedDate.length
 
   // Actualizar horarios disponibles cuando cambia la fecha
   useEffect(() => {
@@ -78,6 +100,9 @@ export function ReservationForm({ existingReservations, initialData, initialDate
 
       const endTimeLimit = maxEndTime < endOfDay ? maxEndTime : endOfDay
 
+      // Obtener la hora actual para deshabilitar slots pasados
+      const now = new Date()
+
       while (currentTime <= endTimeLimit) {
         const isAvailable = !existingReservations.some((reservation) => {
           // Ignorar la reserva actual si estamos editando
@@ -89,9 +114,13 @@ export function ReservationForm({ existingReservations, initialData, initialDate
           return currentTime > reservationStart && currentTime <= reservationEnd
         })
 
+        // Verificar si el horario ya pasó
+        const isPast = isBefore(currentTime, now)
+
         possibleEndTimes.push({
           time: new Date(currentTime),
           available: isAvailable,
+          isPast: isPast,
         })
 
         currentTime = addMinutes(currentTime, 30)
@@ -131,27 +160,7 @@ export function ReservationForm({ existingReservations, initialData, initialDate
     try {
       if (initialData) {
         // Actualizar reserva existente
-        const { error } = await supabase
-          .from("reservations")
-          .update({
-            name,
-            apartment_number: apartmentNumber,
-            title,
-            description,
-            start_time: startTime.toISOString(),
-            end_time: endTime.toISOString(),
-          })
-          .eq("id", initialData.id)
-
-        if (error) throw error
-
-        toast({
-          title: "Reserva actualizada",
-          description: "Tu reserva ha sido actualizada exitosamente.",
-        })
-      } else {
-        // Crear nueva reserva
-        const { error } = await supabase.from("reservations").insert({
+        await updateReservation(initialData.id, {
           name,
           apartment_number: apartmentNumber,
           title,
@@ -160,7 +169,20 @@ export function ReservationForm({ existingReservations, initialData, initialDate
           end_time: endTime.toISOString(),
         })
 
-        if (error) throw error
+        toast({
+          title: "Reserva actualizada",
+          description: "Tu reserva ha sido actualizada exitosamente.",
+        })
+      } else {
+        // Crear nueva reserva
+        await createReservation({
+          name,
+          apartment_number: apartmentNumber,
+          title,
+          description,
+          start_time: startTime.toISOString(),
+          end_time: endTime.toISOString(),
+        })
 
         toast({
           title: "Reserva creada",
@@ -182,12 +204,20 @@ export function ReservationForm({ existingReservations, initialData, initialDate
   }
 
   return (
-    <Card>
+    <Card className="w-full max-w-lg mx-auto">
       <CardHeader>
         <CardTitle>{initialData ? "Editar Reserva" : "Nueva Reserva"}</CardTitle>
         <CardDescription>
           {initialData ? "Actualiza los detalles de tu reserva" : "Reserva la parrilla para tu evento"}
         </CardDescription>
+        {reservationsCount >= 2 && (
+          <div className="flex items-center text-red-500 mt-2 text-sm">
+            <AlertTriangle className="h-4 w-4 mr-1" />
+            {reservationsCount >= 4
+              ? `¡Atención! Este día tiene ${reservationsCount} reservas. Es muy probable que haya superposición de horarios.`
+              : `Este día tiene ${reservationsCount} reservas. Es posible que haya superposición de horarios.`}
+          </div>
+        )}
       </CardHeader>
       <form onSubmit={handleSubmit}>
         <CardContent className="space-y-4">
@@ -196,7 +226,6 @@ export function ReservationForm({ existingReservations, initialData, initialDate
             <Input id="name" placeholder="Juan Pérez" value={name} onChange={(e) => setName(e.target.value)} required />
           </div>
 
-          {/* Reemplazar el campo de texto de apartamento por un selector */}
           <div className="space-y-2">
             <Label htmlFor="apartmentNumber">Número de Apartamento</Label>
             <Select value={apartmentNumber} onValueChange={setApartmentNumber} required>
@@ -250,7 +279,14 @@ export function ReservationForm({ existingReservations, initialData, initialDate
                 </Button>
               </PopoverTrigger>
               <PopoverContent className="w-auto p-0">
-                <Calendar mode="single" selected={date} onSelect={setDate} initialFocus locale={es} />
+                <Calendar
+                  mode="single"
+                  selected={date}
+                  onSelect={setDate}
+                  initialFocus
+                  locale={es}
+                  disabled={(date) => isBefore(date, startOfDay(today))}
+                />
               </PopoverContent>
             </Popover>
           </div>
@@ -272,11 +308,12 @@ export function ReservationForm({ existingReservations, initialData, initialDate
                   <SelectItem
                     key={index}
                     value={slot.time.toISOString()}
-                    disabled={!slot.available}
-                    className={!slot.available ? "opacity-50" : ""}
+                    disabled={!slot.available || slot.isPast}
+                    className={!slot.available || slot.isPast ? "opacity-50" : ""}
                   >
                     {format(slot.time, "h:mm a")}
                     {!slot.available && " (No disponible)"}
+                    {slot.isPast && " (Hora pasada)"}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -300,11 +337,12 @@ export function ReservationForm({ existingReservations, initialData, initialDate
                   <SelectItem
                     key={index}
                     value={slot.time.toISOString()}
-                    disabled={!slot.available}
-                    className={!slot.available ? "opacity-50" : ""}
+                    disabled={!slot.available || slot.isPast}
+                    className={!slot.available || slot.isPast ? "opacity-50" : ""}
                   >
                     {format(slot.time, "h:mm a")}
                     {!slot.available && " (No disponible)"}
+                    {slot.isPast && " (Hora pasada)"}
                   </SelectItem>
                 ))}
               </SelectContent>

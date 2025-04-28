@@ -1,29 +1,39 @@
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { SiteHeader } from "@/components/layout/site-header"
-import { Flame, Calendar, Users } from "lucide-react"
-import { createServerSupabaseClient } from "@/lib/supabase/server"
-import { formatTime } from "@/lib/utils/date"
-import { format, startOfDay, endOfDay } from "date-fns"
+import { Flame, Calendar, Users, AlertTriangle } from "lucide-react"
+import { formatTime, formatDate } from "@/lib/utils/date"
+import { format, addDays } from "date-fns"
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
+import { getAllReservations } from "@/lib/actions/reservation-actions"
 
 export default async function Home() {
-  const supabase = createServerSupabaseClient()
   const today = new Date()
+  const tenDaysLater = addDays(today, 10)
 
-  // Obtener las reservas de hoy
-  const { data: todayReservations } = await supabase
-    .from("reservations")
-    .select("*")
-    .gte("start_time", startOfDay(today).toISOString())
-    .lte("start_time", endOfDay(today).toISOString())
-    .order("start_time", { ascending: true })
+  // Obtener todas las reservas
+  const allReservations = await getAllReservations()
+
+  // Filtrar reservas para los próximos 10 días
+  const upcomingReservations = allReservations
+    .filter((reservation) => {
+      const reservationDate = new Date(reservation.start_time)
+      return reservationDate >= today && reservationDate <= tenDaysLater
+    })
+    .sort((a, b) => new Date(a.start_time).getTime() - new Date(b.start_time).getTime())
+
+  // Verificar si hay más de 4 reservas
+  const hasMoreThanFourReservations = upcomingReservations.length > 4
+
+  // Limitar a 4 reservas para mostrar
+  const reservationsToShow = upcomingReservations.slice(0, 4)
 
   return (
-    <div className="flex min-h-screen flex-col">
+    <div className="flex min-h-screen flex-col w-full">
       <SiteHeader />
-      <main className="flex-1">
+      <main className="flex-1 w-full">
         <section className="w-full py-12 md:py-24 lg:py-32 bg-gradient-to-b from-white to-gray-100 dark:from-gray-900 dark:to-gray-950">
-          <div className="container px-4 md:px-6">
+          <div className="container px-4 md:px-6 max-w-5xl mx-auto">
             <div className="grid gap-6 lg:grid-cols-2 lg:gap-12 items-center">
               <div className="flex flex-col justify-center space-y-4">
                 <div className="space-y-2">
@@ -50,50 +60,68 @@ export default async function Home() {
               </div>
               <div className="mx-auto lg:mx-0 relative">
                 <div className="absolute inset-0 bg-gradient-to-r from-orange-400 to-red-500 rounded-xl blur-xl opacity-20 animate-pulse" />
-                <div className="relative bg-white dark:bg-gray-950 border rounded-xl overflow-hidden shadow-xl">
-                  <div className="p-6">
-                    <div className="flex items-center justify-between mb-4">
-                      <h3 className="text-xl font-bold">Reservas de Hoy</h3>
+                <Card className="relative border rounded-xl overflow-hidden shadow-xl">
+                  <CardHeader>
+                    <CardTitle className="flex items-center justify-between">
+                      <span>Reservas de los próximos 10 días</span>
                       <Calendar className="h-5 w-5 text-gray-500" />
-                    </div>
+                    </CardTitle>
+                    <CardDescription>
+                      {upcomingReservations.length === 0
+                        ? "No hay reservas programadas"
+                        : `${upcomingReservations.length} reserva(s) programada(s)`}
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
                     <div className="space-y-3">
-                      {todayReservations && todayReservations.length > 0 ? (
-                        todayReservations.map((reservation) => (
+                      {reservationsToShow.length > 0 ? (
+                        reservationsToShow.map((reservation) => (
                           <div
                             key={reservation.id}
                             className="flex items-center justify-between p-3 rounded-lg bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-900"
                           >
-                            <span className="font-medium">
-                              {formatTime(reservation.start_time)} - {formatTime(reservation.end_time)}
-                            </span>
+                            <div className="flex flex-col">
+                              <span className="font-medium">{formatDate(reservation.start_time)}</span>
+                              <span className="text-sm">
+                                {formatTime(reservation.start_time)} - {formatTime(reservation.end_time)}
+                              </span>
+                            </div>
                             <span className="text-sm text-red-600 dark:text-red-400">
-                              Reservado por {reservation.name} (Apto {reservation.apartment_number})
+                              {reservation.title} - {reservation.name} (Apto {reservation.apartment_number})
                             </span>
                           </div>
                         ))
                       ) : (
                         <div className="flex items-center justify-between p-3 rounded-lg bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-900">
-                          <span className="font-medium">Todo el día</span>
+                          <span className="font-medium">Próximos 10 días</span>
                           <span className="text-sm text-green-600 dark:text-green-400">Disponible</span>
                         </div>
                       )}
-                      <div className="mt-4 text-center">
-                        <Link href="/calendar">
-                          <Button variant="outline" size="sm">
-                            Ver Calendario Completo
-                          </Button>
-                        </Link>
-                      </div>
                     </div>
-                  </div>
-                </div>
+
+                    {hasMoreThanFourReservations && (
+                      <div className="flex items-center text-red-500 mt-4 text-sm">
+                        <AlertTriangle className="h-4 w-4 mr-1" />
+                        Hay {upcomingReservations.length} reservas en los próximos días. Consulta el calendario para ver
+                        todas.
+                      </div>
+                    )}
+                  </CardContent>
+                  <CardFooter>
+                    <Link href="/calendar" className="w-full">
+                      <Button variant="outline" className="w-full">
+                        Ver Calendario Completo
+                      </Button>
+                    </Link>
+                  </CardFooter>
+                </Card>
               </div>
             </div>
           </div>
         </section>
 
         <section className="w-full py-12 md:py-24 lg:py-32">
-          <div className="container px-4 md:px-6">
+          <div className="container px-4 md:px-6 max-w-5xl mx-auto">
             <div className="flex flex-col items-center justify-center space-y-4 text-center">
               <div className="space-y-2">
                 <h2 className="text-3xl font-bold tracking-tighter sm:text-4xl md:text-5xl">Cómo Funciona</h2>

@@ -7,8 +7,8 @@ import { ThemeProvider } from "@/components/theme-provider"
 const inter = Inter({ subsets: ["latin"] })
 
 export const metadata = {
-  title: "Outdoor Grill Reservations",
-  description: "Reserve the outdoor grill for your next event",
+  title: "Reservas de Parrilla",
+  description: "Reserva la parrilla para tu próximo evento",
     generator: 'v0.dev'
 }
 
@@ -18,10 +18,10 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="en">
+    <html lang="es">
       <body className={inter.className}>
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
-          {children}
+          <div className="flex min-h-screen flex-col items-center">{children}</div>
           <Toaster />
         </ThemeProvider>
       </body>

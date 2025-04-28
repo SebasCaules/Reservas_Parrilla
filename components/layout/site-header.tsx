@@ -1,6 +1,6 @@
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
-import { Flame, Calendar } from "lucide-react"
+import { Flame, Calendar, ClipboardList } from "lucide-react"
 
 export function SiteHeader() {
   return (
@@ -18,6 +18,12 @@ export function SiteHeader() {
             <Button variant="ghost" size="sm">
               <Calendar className="h-4 w-4 mr-2" />
               Calendario
+            </Button>
+          </Link>
+          <Link href="/historial">
+            <Button variant="ghost" size="sm">
+              <ClipboardList className="h-4 w-4 mr-2" />
+              Historial
             </Button>
           </Link>
           <Link href="/reserve">

@@ -1,4 +1,4 @@
-import { format, parseISO, isWithinInterval, isSameDay, differenceInHours } from "date-fns"
+import { format, parseISO, isWithinInterval, isSameDay, differenceInHours, isBefore } from "date-fns"
 import { es } from "date-fns/locale"
 import type { Reservation } from "../types/database"
 
@@ -37,6 +37,7 @@ export function generateTimeSlots(
 ): {
   time: Date
   available: boolean
+  isPast: boolean
 }[] {
   const slots = []
   const startHour = 8 // 8 AM
@@ -48,6 +49,9 @@ export function generateTimeSlots(
 
   // Filtrar reservas solo para el día seleccionado
   const dayReservations = reservations.filter((reservation) => isSameDay(parseISO(reservation.start_time), date))
+
+  // Obtener la hora actual para deshabilitar slots pasados
+  const now = new Date()
 
   for (let hour = startHour; hour < endHour; hour++) {
     for (let minute = 0; minute < 60; minute += 30) {
@@ -61,9 +65,13 @@ export function generateTimeSlots(
         return slotTime >= reservationStart && slotTime < reservationEnd
       })
 
+      // Verificar si el horario ya pasó
+      const isPast = isBefore(slotTime, now)
+
       slots.push({
         time: slotTime,
         available: isAvailable,
+        isPast: isPast,
       })
     }
   }
@@ -88,5 +96,17 @@ export function isValidReservation(startTime: Date, endTime: Date): { valid: boo
     return { valid: false, message: "La hora de finalización debe ser posterior a la hora de inicio" }
   }
 
+  // Verificar que la reserva no sea para una fecha/hora pasada
+  const now = new Date()
+  if (isBefore(startTime, now)) {
+    return { valid: false, message: "No se pueden hacer reservas para fechas u horas pasadas" }
+  }
+
   return { valid: true }
+}
+
+export function isPastReservation(reservation: Reservation): boolean {
+  const now = new Date()
+  const endTime = parseISO(reservation.end_time)
+  return isBefore(endTime, now)
 }

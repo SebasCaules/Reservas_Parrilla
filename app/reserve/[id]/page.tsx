@@ -1,32 +1,27 @@
 import { notFound } from "next/navigation"
-import { createServerSupabaseClient } from "@/lib/supabase/server"
 import { SiteHeader } from "@/components/layout/site-header"
 import { ReservationForm } from "@/components/reservations/reservation-form"
+import { getAllReservations, getReservationById } from "@/lib/actions/reservation-actions"
 
 export default async function EditReservationPage({
   params,
 }: {
   params: { id: string }
 }) {
-  const supabase = createServerSupabaseClient()
+  try {
+    const reservation = await getReservationById(params.id)
+    const reservations = await getAllReservations()
 
-  // Obtener la reserva
-  const { data: reservation } = await supabase.from("reservations").select("*").eq("id", params.id).single()
-
-  if (!reservation) {
+    return (
+      <div className="flex min-h-screen flex-col w-full">
+        <SiteHeader />
+        <main className="flex-1 container max-w-lg py-8">
+          <h1 className="text-3xl font-bold mb-8 text-center">Editar Reserva</h1>
+          <ReservationForm existingReservations={reservations} initialData={reservation} />
+        </main>
+      </div>
+    )
+  } catch (error) {
     notFound()
   }
-
-  // Obtener todas las reservas para verificar disponibilidad
-  const { data: reservations } = await supabase.from("reservations").select("*")
-
-  return (
-    <div className="flex min-h-screen flex-col">
-      <SiteHeader />
-      <main className="flex-1 container max-w-lg py-8">
-        <h1 className="text-3xl font-bold mb-8">Editar Reserva</h1>
-        <ReservationForm existingReservations={reservations || []} initialData={reservation} />
-      </main>
-    </div>
-  )
 }
