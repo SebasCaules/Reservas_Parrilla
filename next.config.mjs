@@ -29,6 +29,14 @@ const nextConfig = {
       },
     ]
   },
+  // Optimizaciones de producción
+  swcMinify: true,
+  compiler: {
+    removeConsole: process.env.NODE_ENV === 'production' ? {
+      exclude: ['error', 'warn'],
+    } : false,
+  },
+  poweredByHeader: false,
 }
 
 export default nextConfig

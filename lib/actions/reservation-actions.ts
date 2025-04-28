@@ -2,16 +2,24 @@
 
 import type { Reservation, NewReservation } from "@/lib/types/database"
 import * as ReservationService from "@/lib/services/reservation-service"
-import { revalidateAllRoutes } from "@/lib/utils/revalidation"
+import { revalidatePath } from "next/cache"
+
+// Rutas principales para revalidar
+const MAIN_ROUTES = ["/", "/calendar", "/historial", "/reserve"]
+
+// Función para revalidar todas las rutas principales
+function revalidateAllRoutes() {
+  MAIN_ROUTES.forEach((path) => revalidatePath(path))
+}
 
 // Obtener todas las reservas
 export async function getAllReservations() {
   return await ReservationService.getAllReservations()
 }
 
-// Obtener reservas de hoy
-export async function getTodayReservations() {
-  return await ReservationService.getTodayReservations()
+// Obtener reservas para los próximos días
+export async function getUpcomingReservations(days = 10) {
+  return await ReservationService.getUpcomingReservations(days)
 }
 
 // Obtener una reserva por ID
@@ -45,4 +53,9 @@ export async function cancelReservationWithCode(id: string, code: string) {
   const result = await ReservationService.cancelReservationWithCode(id, code)
   revalidateAllRoutes()
   return result
+}
+
+// Verificar el estado de la conexión
+export async function checkConnection() {
+  return await ReservationService.checkConnection()
 }

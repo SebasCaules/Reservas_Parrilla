@@ -15,7 +15,6 @@ import { motion } from "framer-motion"
 import type { Reservation } from "@/lib/types/database"
 import { RefreshButton } from "@/components/refresh-button"
 import { useState, useEffect } from "react"
-// Importar el componente de actualización automática
 import { AutoRefresh } from "@/components/auto-refresh"
 
 interface HomeContentProps {

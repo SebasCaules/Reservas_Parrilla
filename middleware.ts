@@ -10,9 +10,6 @@ export function middleware(request: NextRequest) {
   response.headers.set("Pragma", "no-cache")
   response.headers.set("Expires", "0")
 
-  // Añadir un timestamp como encabezado personalizado para evitar caché
-  response.headers.set("X-Timestamp", new Date().getTime().toString())
-
   return response
 }
 
