@@ -6,11 +6,9 @@ export interface Database {
       reservations: {
         Row: {
           id: string
-          user_id: string | null
           name: string
           apartment_number: string
           title: string
-          description: string | null
           start_time: string
           end_time: string
           created_at: string
@@ -18,11 +16,9 @@ export interface Database {
         }
         Insert: {
           id?: string
-          user_id?: string | null
           name: string
           apartment_number: string
           title: string
-          description?: string | null
           start_time: string
           end_time: string
           created_at?: string
@@ -30,11 +26,9 @@ export interface Database {
         }
         Update: {
           id?: string
-          user_id?: string | null
           name?: string
           apartment_number?: string
           title?: string
-          description?: string | null
           start_time?: string
           end_time?: string
           created_at?: string

@@ -1,12 +1,15 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { HistorialFilters } from "./historial-filters"
-import { formatDateTime, isPastReservation } from "@/lib/utils/date"
+import { formatDate, formatTime, isPastReservation } from "@/lib/utils/date"
 import type { Reservation } from "@/lib/types/database"
 import { parseISO, getMonth, getYear } from "date-fns"
+import { AnimatedCard } from "@/components/ui/animated-card"
+import { AnimatedList } from "@/components/ui/animated-list"
+import { motion } from "framer-motion"
 
 interface HistorialListProps {
   reservations: Reservation[]
@@ -62,19 +65,59 @@ export function HistorialList({ reservations }: HistorialListProps) {
     setActiveFilters(filters)
   }
 
+  // Función para renderizar una reserva con el formato actualizado
+  const renderReservation = (reservation: Reservation, isPast = false) => {
+    const startDate = new Date(reservation.start_time)
+    const endDate = new Date(reservation.end_time)
+
+    return (
+      <div
+        key={reservation.id}
+        className={`flex flex-col space-y-2 rounded-lg border p-4 ${isPast ? "opacity-60" : ""}`}
+      >
+        <div className="flex items-center justify-between">
+          <h3 className="font-medium">{reservation.title}</h3>
+          <span className="text-sm text-muted-foreground">Unidad {reservation.apartment_number}</span>
+        </div>
+        <div className="text-sm">
+          <span className="font-medium">Reservado por:</span> {reservation.name}
+        </div>
+        <div className="text-sm">
+          <span className="font-medium">Fecha:</span> {formatDate(startDate)}
+        </div>
+        <div className="text-sm">
+          <span className="font-medium">Horario:</span> {formatTime(startDate)} - {formatTime(endDate)}
+        </div>
+      </div>
+    )
+  }
+
   return (
-    <div className="max-w-4xl mx-auto">
-      <HistorialFilters onFilterChange={handleFilterChange} />
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.5 }}
+      className="max-w-4xl mx-auto"
+    >
+      <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
+        <HistorialFilters onFilterChange={handleFilterChange} />
+      </motion.div>
 
       <Tabs defaultValue="all" className="w-full">
-        <TabsList className="grid w-full grid-cols-3 mb-6">
-          <TabsTrigger value="all">Todas ({filteredReservations.length})</TabsTrigger>
-          <TabsTrigger value="upcoming">Próximas ({upcomingReservations.length})</TabsTrigger>
-          <TabsTrigger value="past">Pasadas ({pastReservations.length})</TabsTrigger>
-        </TabsList>
+        <motion.div
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, delay: 0.2 }}
+        >
+          <TabsList className="grid w-full grid-cols-3 mb-6">
+            <TabsTrigger value="all">Todas ({filteredReservations.length})</TabsTrigger>
+            <TabsTrigger value="upcoming">Próximas ({upcomingReservations.length})</TabsTrigger>
+            <TabsTrigger value="past">Pasadas ({pastReservations.length})</TabsTrigger>
+          </TabsList>
+        </motion.div>
 
         <TabsContent value="all">
-          <Card>
+          <AnimatedCard>
             <CardHeader>
               <CardTitle>Todas las Reservas</CardTitle>
               <CardDescription>
@@ -83,42 +126,27 @@ export function HistorialList({ reservations }: HistorialListProps) {
             </CardHeader>
             <CardContent>
               {filteredReservations.length > 0 ? (
-                <div className="space-y-4">
-                  {filteredReservations.map((reservation) => (
-                    <div
-                      key={reservation.id}
-                      className={`flex flex-col space-y-2 rounded-lg border p-4 ${
-                        isPastReservation(reservation) ? "opacity-60" : ""
-                      }`}
-                    >
-                      <div className="flex items-center justify-between">
-                        <h3 className="font-medium">{reservation.title}</h3>
-                        <span className="text-sm text-muted-foreground">Apto {reservation.apartment_number}</span>
-                      </div>
-                      <div className="text-sm">
-                        <span className="font-medium">Fecha y hora:</span> {formatDateTime(reservation.start_time)} -{" "}
-                        {formatDateTime(reservation.end_time)}
-                      </div>
-                      <div className="text-sm">
-                        <span className="font-medium">Reservado por:</span> {reservation.name}
-                      </div>
-                      {reservation.description && (
-                        <p className="text-sm text-muted-foreground mt-2">{reservation.description}</p>
-                      )}
-                    </div>
-                  ))}
-                </div>
+                <AnimatedList>
+                  {filteredReservations.map((reservation) =>
+                    renderReservation(reservation, isPastReservation(reservation)),
+                  )}
+                </AnimatedList>
               ) : (
-                <p className="text-center py-8 text-muted-foreground">
+                <motion.p
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ duration: 0.5 }}
+                  className="text-center py-8 text-muted-foreground"
+                >
                   No hay reservas que coincidan con los filtros seleccionados
-                </p>
+                </motion.p>
               )}
             </CardContent>
-          </Card>
+          </AnimatedCard>
         </TabsContent>
 
         <TabsContent value="upcoming">
-          <Card>
+          <AnimatedCard>
             <CardHeader>
               <CardTitle>Próximas Reservas</CardTitle>
               <CardDescription>
@@ -127,72 +155,46 @@ export function HistorialList({ reservations }: HistorialListProps) {
             </CardHeader>
             <CardContent>
               {upcomingReservations.length > 0 ? (
-                <div className="space-y-4">
-                  {upcomingReservations.map((reservation) => (
-                    <div key={reservation.id} className="flex flex-col space-y-2 rounded-lg border p-4">
-                      <div className="flex items-center justify-between">
-                        <h3 className="font-medium">{reservation.title}</h3>
-                        <span className="text-sm text-muted-foreground">Apto {reservation.apartment_number}</span>
-                      </div>
-                      <div className="text-sm">
-                        <span className="font-medium">Fecha y hora:</span> {formatDateTime(reservation.start_time)} -{" "}
-                        {formatDateTime(reservation.end_time)}
-                      </div>
-                      <div className="text-sm">
-                        <span className="font-medium">Reservado por:</span> {reservation.name}
-                      </div>
-                      {reservation.description && (
-                        <p className="text-sm text-muted-foreground mt-2">{reservation.description}</p>
-                      )}
-                    </div>
-                  ))}
-                </div>
+                <AnimatedList>{upcomingReservations.map((reservation) => renderReservation(reservation))}</AnimatedList>
               ) : (
-                <p className="text-center py-8 text-muted-foreground">
+                <motion.p
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ duration: 0.5 }}
+                  className="text-center py-8 text-muted-foreground"
+                >
                   No hay próximas reservas que coincidan con los filtros seleccionados
-                </p>
+                </motion.p>
               )}
             </CardContent>
-          </Card>
+          </AnimatedCard>
         </TabsContent>
 
         <TabsContent value="past">
-          <Card>
+          <AnimatedCard>
             <CardHeader>
               <CardTitle>Reservas Pasadas</CardTitle>
               <CardDescription>Historial de reservas anteriores ({pastReservations.length} reservas)</CardDescription>
             </CardHeader>
             <CardContent>
               {pastReservations.length > 0 ? (
-                <div className="space-y-4">
-                  {pastReservations.map((reservation) => (
-                    <div key={reservation.id} className="flex flex-col space-y-2 rounded-lg border p-4 opacity-60">
-                      <div className="flex items-center justify-between">
-                        <h3 className="font-medium">{reservation.title}</h3>
-                        <span className="text-sm text-muted-foreground">Apto {reservation.apartment_number}</span>
-                      </div>
-                      <div className="text-sm">
-                        <span className="font-medium">Fecha y hora:</span> {formatDateTime(reservation.start_time)} -{" "}
-                        {formatDateTime(reservation.end_time)}
-                      </div>
-                      <div className="text-sm">
-                        <span className="font-medium">Reservado por:</span> {reservation.name}
-                      </div>
-                      {reservation.description && (
-                        <p className="text-sm text-muted-foreground mt-2">{reservation.description}</p>
-                      )}
-                    </div>
-                  ))}
-                </div>
+                <AnimatedList>
+                  {pastReservations.map((reservation) => renderReservation(reservation, true))}
+                </AnimatedList>
               ) : (
-                <p className="text-center py-8 text-muted-foreground">
+                <motion.p
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ duration: 0.5 }}
+                  className="text-center py-8 text-muted-foreground"
+                >
                   No hay reservas pasadas que coincidan con los filtros seleccionados
-                </p>
+                </motion.p>
               )}
             </CardContent>
-          </Card>
+          </AnimatedCard>
         </TabsContent>
       </Tabs>
-    </div>
+    </motion.div>
   )
 }

@@ -1,143 +1,68 @@
 "use server"
 
-import { createServerSupabaseClient } from "@/lib/supabase/server"
 import { revalidatePath } from "next/cache"
 import type { Reservation, NewReservation } from "@/lib/types/database"
-import { generateCancellationCode } from "@/lib/utils/reservation"
+import * as ReservationService from "@/lib/services/reservation-service"
 
 // Obtener todas las reservas
 export async function getAllReservations() {
-  const supabase = createServerSupabaseClient()
-  const { data, error } = await supabase.from("reservations").select("*").order("start_time", { ascending: false })
-
-  if (error) {
-    throw new Error(`Error al obtener las reservas: ${error.message}`)
-  }
-
-  return data || []
+  return await ReservationService.getAllReservations()
 }
 
 // Obtener reservas de hoy
 export async function getTodayReservations() {
-  const supabase = createServerSupabaseClient()
-  const today = new Date()
-  const startOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate()).toISOString()
-  const endOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 23, 59, 59).toISOString()
-
-  const { data, error } = await supabase
-    .from("reservations")
-    .select("*")
-    .gte("start_time", startOfDay)
-    .lte("start_time", endOfDay)
-    .order("start_time", { ascending: true })
-
-  if (error) {
-    throw new Error(`Error al obtener las reservas de hoy: ${error.message}`)
-  }
-
-  return data || []
+  return await ReservationService.getTodayReservations()
 }
 
 // Obtener una reserva por ID
 export async function getReservationById(id: string) {
-  const supabase = createServerSupabaseClient()
-  const { data, error } = await supabase.from("reservations").select("*").eq("id", id).single()
-
-  if (error) {
-    throw new Error(`Error al obtener la reserva: ${error.message}`)
-  }
-
-  return data
+  return await ReservationService.getReservationById(id)
 }
 
 // Crear una nueva reserva
 export async function createReservation(reservation: NewReservation) {
-  const supabase = createServerSupabaseClient()
+  const result = await ReservationService.createReservation(reservation)
 
-  // Asegurarse de que haya un código de cancelación
-  if (!reservation.cancellation_code) {
-    reservation.cancellation_code = generateCancellationCode()
-  }
-
-  const { data, error } = await supabase.from("reservations").insert(reservation).select().single()
-
-  if (error) {
-    throw new Error(`Error al crear la reserva: ${error.message}`)
-  }
-
+  // Revalidar rutas relevantes
   revalidatePath("/calendar")
   revalidatePath("/historial")
   revalidatePath("/")
 
-  return data
+  return result
 }
 
 // Actualizar una reserva existente
 export async function updateReservation(id: string, reservation: Partial<Reservation>) {
-  const supabase = createServerSupabaseClient()
-  const { data, error } = await supabase.from("reservations").update(reservation).eq("id", id).select().single()
+  const result = await ReservationService.updateReservation(id, reservation)
 
-  if (error) {
-    throw new Error(`Error al actualizar la reserva: ${error.message}`)
-  }
-
+  // Revalidar rutas relevantes
   revalidatePath("/calendar")
   revalidatePath("/historial")
   revalidatePath("/")
 
-  return data
+  return result
 }
 
 // Eliminar una reserva
 export async function deleteReservation(id: string) {
-  const supabase = createServerSupabaseClient()
-  const { error } = await supabase.from("reservations").delete().eq("id", id)
+  const result = await ReservationService.deleteReservation(id)
 
-  if (error) {
-    throw new Error(`Error al eliminar la reserva: ${error.message}`)
-  }
-
+  // Revalidar rutas relevantes
   revalidatePath("/calendar")
   revalidatePath("/historial")
   revalidatePath("/")
 
-  return { success: true }
+  return result
 }
 
 // Verificar código de cancelación y eliminar reserva
 export async function cancelReservationWithCode(id: string, code: string) {
-  const supabase = createServerSupabaseClient()
+  const result = await ReservationService.cancelReservationWithCode(id, code)
 
-  // Primero verificamos que el código sea correcto
-  const { data: reservation, error: fetchError } = await supabase
-    .from("reservations")
-    .select("cancellation_code")
-    .eq("id", id)
-    .single()
-
-  if (fetchError) {
-    throw new Error(`Error al verificar la reserva: ${fetchError.message}`)
-  }
-
-  if (!reservation) {
-    throw new Error("Reserva no encontrada")
-  }
-
-  // Verificar que el código coincida
-  if (reservation.cancellation_code !== code) {
-    return { success: false, message: "Código de cancelación incorrecto" }
-  }
-
-  // Si el código es correcto, eliminar la reserva
-  const { error: deleteError } = await supabase.from("reservations").delete().eq("id", id)
-
-  if (deleteError) {
-    throw new Error(`Error al eliminar la reserva: ${deleteError.message}`)
-  }
-
+  // Revalidar rutas relevantes
   revalidatePath("/calendar")
   revalidatePath("/historial")
   revalidatePath("/")
 
-  return { success: true, message: "Reserva cancelada exitosamente" }
+  return result
 }

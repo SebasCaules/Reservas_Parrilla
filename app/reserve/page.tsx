@@ -1,6 +1,6 @@
-import { SiteHeader } from "@/components/layout/site-header"
 import { ReservationForm } from "@/components/reservations/reservation-form"
 import { getAllReservations } from "@/lib/actions/reservation-actions"
+import { AnimatedLayout } from "@/components/layout/animated-layout"
 
 export default async function ReservePage({
   searchParams,
@@ -11,12 +11,11 @@ export default async function ReservePage({
   const initialDate = searchParams?.date
 
   return (
-    <div className="flex min-h-screen flex-col w-full mx-2 md:mx-4">
-      <SiteHeader />
+    <AnimatedLayout>
       <main className="flex-1 container py-8">
         <h1 className="text-3xl font-bold mb-8 text-center">Reservar la Parrilla</h1>
         <ReservationForm existingReservations={reservations} initialDate={initialDate} />
       </main>
-    </div>
+    </AnimatedLayout>
   )
 }

@@ -1,16 +1,16 @@
 "use client"
 
+import { Button } from "@/components/ui/button"
+
 import type React from "react"
 
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
-import { Button } from "@/components/ui/button"
 import { Calendar } from "@/components/ui/calendar"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
-import { Textarea } from "@/components/ui/textarea"
 import { toast } from "@/components/ui/use-toast"
 import { format, addMinutes, parseISO, isBefore, startOfDay, isSameDay } from "date-fns"
 import { es } from "date-fns/locale"
@@ -21,8 +21,10 @@ import type { Reservation } from "@/lib/types/database"
 import { generateTimeSlots, isValidReservation } from "@/lib/utils/date"
 import { createReservation, updateReservation } from "@/lib/actions/reservation-actions"
 import { AlertMessage } from "@/components/ui/alert-message"
-import { generateCancellationCode, sendReservationEmail } from "@/lib/utils/reservation"
+import { generateCancellationCode } from "@/lib/utils/reservation"
 import { ReservationSuccessDialog } from "./reservation-success-dialog"
+import { AnimatedButton } from "@/components/ui/animated-button"
+import { motion } from "framer-motion"
 
 interface ReservationFormProps {
   existingReservations: Reservation[]
@@ -35,10 +37,8 @@ export function ReservationForm({ existingReservations, initialData, initialDate
 
   const [isLoading, setIsLoading] = useState(false)
   const [name, setName] = useState(initialData?.name || "")
-  const [email, setEmail] = useState("")
   const [apartmentNumber, setApartmentNumber] = useState(initialData?.apartment_number || "")
   const [title, setTitle] = useState(initialData?.title || "")
-  const [description, setDescription] = useState(initialData?.description || "")
 
   // Obtener la fecha actual para deshabilitar fechas pasadas
   const today = new Date()
@@ -80,7 +80,6 @@ export function ReservationForm({ existingReservations, initialData, initialDate
   const [showSuccessDialog, setShowSuccessDialog] = useState(false)
   const [createdReservation, setCreatedReservation] = useState<any>(null)
   const [generatedCode, setGeneratedCode] = useState("")
-  const [emailSent, setEmailSent] = useState(false)
 
   // Actualizar horarios disponibles cuando cambia la fecha
   useEffect(() => {
@@ -164,17 +163,6 @@ export function ReservationForm({ existingReservations, initialData, initialDate
       return
     }
 
-    // Validar email
-    if (!email || !/^\S+@\S+\.\S+$/.test(email)) {
-      toast({
-        title: "Error",
-        description: "Por favor ingresa un correo electrónico válido",
-        variant: "destructive",
-      })
-      setIsLoading(false)
-      return
-    }
-
     // Validar la reserva
     const validation = isValidReservation(startTime, endTime)
     if (!validation.valid) {
@@ -197,7 +185,6 @@ export function ReservationForm({ existingReservations, initialData, initialDate
           name,
           apartment_number: apartmentNumber,
           title,
-          description,
           start_time: startTime.toISOString(),
           end_time: endTime.toISOString(),
           cancellation_code: initialData.cancellation_code || cancellationCode,
@@ -217,26 +204,10 @@ export function ReservationForm({ existingReservations, initialData, initialDate
           name,
           apartment_number: apartmentNumber,
           title,
-          description,
           start_time: startTime.toISOString(),
           end_time: endTime.toISOString(),
           cancellation_code: cancellationCode,
         })
-
-        // Intentar enviar correo electrónico
-        const emailResult = await sendReservationEmail(email, newReservation, cancellationCode)
-        setEmailSent(emailResult.success)
-
-        if (!emailResult.success) {
-          // Mostrar una notificación, pero continuar con el proceso
-          toast({
-            title: "Advertencia",
-            description:
-              emailResult.message ||
-              "No se pudo enviar el correo electrónico, pero tu reserva ha sido creada. Por favor, guarda el código de cancelación que se muestra.",
-            variant: "warning",
-          })
-        }
 
         // Mostrar el diálogo con el código
         setCreatedReservation(newReservation)
@@ -262,184 +233,196 @@ export function ReservationForm({ existingReservations, initialData, initialDate
   }
 
   return (
-    <Card className="w-full max-w-lg mx-auto">
-      <CardHeader>
-        <CardTitle>{initialData ? "Editar Reserva" : "Nueva Reserva"}</CardTitle>
-        <CardDescription>
-          {initialData ? "Actualiza los detalles de tu reserva" : "Reserva la parrilla para tu evento"}
-        </CardDescription>
-        {reservationsCount >= 2 && (
-          <AlertMessage className="mt-2">
-            {reservationsCount >= 4
-              ? `¡Atención! Este día tiene ${reservationsCount} reservas. Es muy probable que haya superposición de horarios.`
-              : `Este día tiene ${reservationsCount} reservas. Es posible que haya superposición de horarios.`}
-          </AlertMessage>
-        )}
-      </CardHeader>
-      <form onSubmit={handleSubmit}>
-        <CardContent className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="name">Tu Nombre</Label>
-            <Input id="name" placeholder="Juan Pérez" value={name} onChange={(e) => setName(e.target.value)} required />
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="email">Correo Electrónico</Label>
-            <Input
-              id="email"
-              type="email"
-              placeholder="tu@correo.com"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-            />
-            <p className="text-xs text-muted-foreground">
-              <span className="text-orange-600 dark:text-orange-400 font-medium">Nota:</span> En este entorno de
-              desarrollo no se envían correos electrónicos. El código de cancelación se mostrará en pantalla.
-            </p>
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="apartmentNumber">Número de Apartamento</Label>
-            <Select value={apartmentNumber} onValueChange={setApartmentNumber} required>
-              <SelectTrigger id="apartmentNumber" className="w-full">
-                <SelectValue placeholder="Selecciona tu apartamento" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="PB A">PB A</SelectItem>
-                <SelectItem value="PB B">PB B</SelectItem>
-                <SelectItem value="1C">1C</SelectItem>
-                <SelectItem value="1D">1D</SelectItem>
-                <SelectItem value="2E">2E</SelectItem>
-                <SelectItem value="2F">2F</SelectItem>
-                <SelectItem value="3G">3G</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="title">Título del Evento</Label>
-            <Input
-              id="title"
-              placeholder="Asado Familiar"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              required
-            />
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="description">Descripción (Opcional)</Label>
-            <Textarea
-              id="description"
-              placeholder="Detalles sobre tu evento..."
-              value={description || ""}
-              onChange={(e) => setDescription(e.target.value)}
-              className="min-h-[100px]"
-            />
-          </div>
-
-          <div className="space-y-2">
-            <Label>Fecha</Label>
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button
-                  variant="outline"
-                  className={cn("w-full justify-start text-left font-normal", !date && "text-muted-foreground")}
-                >
-                  <CalendarIcon className="mr-2 h-4 w-4" />
-                  {date ? format(date, "PPP", { locale: es }) : "Selecciona una fecha"}
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-auto p-0">
-                <Calendar
-                  mode="single"
-                  selected={date}
-                  onSelect={setDate}
-                  initialFocus
-                  locale={es}
-                  disabled={(date) => isBefore(date, startOfDay(today))}
-                />
-              </PopoverContent>
-            </Popover>
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="startTime">Hora de Inicio</Label>
-            <Select
-              disabled={!date || availableStartTimes.length === 0}
-              value={startTime?.toISOString()}
-              onValueChange={(value) => setStartTime(new Date(value))}
+    <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
+      <Card className="w-full max-w-lg mx-auto">
+        <CardHeader>
+          <CardTitle>{initialData ? "Editar Reserva" : "Nueva Reserva"}</CardTitle>
+          <CardDescription>
+            {initialData ? "Actualiza los detalles de tu reserva" : "Reserva la parrilla para tu evento"}
+          </CardDescription>
+          {reservationsCount >= 2 && (
+            <AlertMessage className="mt-2">
+              {reservationsCount >= 4
+                ? `¡Atención! Este día tiene ${reservationsCount} reservas. Es muy probable que haya superposición de horarios.`
+                : `Este día tiene ${reservationsCount} reservas. Es posible que haya superposición de horarios.`}
+            </AlertMessage>
+          )}
+        </CardHeader>
+        <form onSubmit={handleSubmit}>
+          <CardContent className="space-y-4">
+            <motion.div
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ duration: 0.3, delay: 0.1 }}
+              className="space-y-2"
             >
-              <SelectTrigger id="startTime" className="w-full">
-                <SelectValue placeholder="Selecciona hora de inicio">
-                  {startTime ? format(startTime, "h:mm a") : "Selecciona hora de inicio"}
-                </SelectValue>
-              </SelectTrigger>
-              <SelectContent>
-                {availableStartTimes.map((slot, index) => (
-                  <SelectItem
-                    key={index}
-                    value={slot.time.toISOString()}
-                    disabled={!slot.available || slot.isPast}
-                    className={!slot.available || slot.isPast ? "opacity-50" : ""}
-                  >
-                    {format(slot.time, "h:mm a")}
-                    {!slot.available && " (No disponible)"}
-                    {slot.isPast && " (Hora pasada)"}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+              <Label htmlFor="name">Tu Nombre</Label>
+              <Input
+                id="name"
+                placeholder="Juan Pérez"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                required
+              />
+            </motion.div>
 
-          <div className="space-y-2">
-            <Label htmlFor="endTime">Hora de Finalización</Label>
-            <Select
-              disabled={!startTime || availableEndTimes.length === 0}
-              value={endTime?.toISOString()}
-              onValueChange={(value) => setEndTime(new Date(value))}
+            <motion.div
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ duration: 0.3, delay: 0.2 }}
+              className="space-y-2"
             >
-              <SelectTrigger id="endTime" className="w-full">
-                <SelectValue placeholder="Selecciona hora de finalización">
-                  {endTime ? format(endTime, "h:mm a") : "Selecciona hora de finalización"}
-                </SelectValue>
-              </SelectTrigger>
-              <SelectContent>
-                {availableEndTimes.map((slot, index) => (
-                  <SelectItem
-                    key={index}
-                    value={slot.time.toISOString()}
-                    disabled={!slot.available || slot.isPast}
-                    className={!slot.available || slot.isPast ? "opacity-50" : ""}
+              <Label htmlFor="apartmentNumber">Número de Apartamento</Label>
+              <Select value={apartmentNumber} onValueChange={setApartmentNumber} required>
+                <SelectTrigger id="apartmentNumber" className="w-full">
+                  <SelectValue placeholder="Selecciona tu apartamento" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="PB A">PB A</SelectItem>
+                  <SelectItem value="PB B">PB B</SelectItem>
+                  <SelectItem value="1C">1C</SelectItem>
+                  <SelectItem value="1D">1D</SelectItem>
+                  <SelectItem value="2E">2E</SelectItem>
+                  <SelectItem value="2F">2F</SelectItem>
+                  <SelectItem value="3G">3G</SelectItem>
+                </SelectContent>
+              </Select>
+            </motion.div>
+
+            <motion.div
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ duration: 0.3, delay: 0.3 }}
+              className="space-y-2"
+            >
+              <Label htmlFor="title">Título del Evento</Label>
+              <Input
+                id="title"
+                placeholder="Asado Familiar"
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                required
+              />
+            </motion.div>
+
+            <motion.div
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ duration: 0.3, delay: 0.4 }}
+              className="space-y-2"
+            >
+              <Label>Fecha</Label>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className={cn("w-full justify-start text-left font-normal", !date && "text-muted-foreground")}
                   >
-                    {format(slot.time, "h:mm a")}
-                    {!slot.available && " (No disponible)"}
-                    {slot.isPast && " (Hora pasada)"}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <p className="text-xs text-muted-foreground">Máximo 6 horas, debe terminar el mismo día</p>
-          </div>
-        </CardContent>
-        <CardFooter>
-          <Button
-            type="submit"
-            className="w-full bg-orange-600 hover:bg-orange-700 text-white"
-            disabled={isLoading || !date || !startTime || !endTime}
-          >
-            {isLoading ? "Guardando..." : initialData ? "Actualizar Reserva" : "Crear Reserva"}
-          </Button>
-        </CardFooter>
-      </form>
-      <ReservationSuccessDialog
-        open={showSuccessDialog}
-        onOpenChange={handleSuccessDialogClose}
-        reservation={createdReservation}
-        cancellationCode={generatedCode}
-        emailSent={emailSent}
-      />
-    </Card>
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {date ? format(date, "PPP", { locale: es }) : "Selecciona una fecha"}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0">
+                  <Calendar
+                    mode="single"
+                    selected={date}
+                    onSelect={setDate}
+                    initialFocus
+                    locale={es}
+                    disabled={(date) => isBefore(date, startOfDay(today))}
+                  />
+                </PopoverContent>
+              </Popover>
+            </motion.div>
+
+            <motion.div
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ duration: 0.3, delay: 0.5 }}
+              className="space-y-2"
+            >
+              <Label htmlFor="startTime">Hora de Inicio</Label>
+              <Select
+                disabled={!date || availableStartTimes.length === 0}
+                value={startTime?.toISOString()}
+                onValueChange={(value) => setStartTime(new Date(value))}
+              >
+                <SelectTrigger id="startTime" className="w-full">
+                  <SelectValue placeholder="Selecciona hora de inicio">
+                    {startTime ? format(startTime, "h:mm a") : "Selecciona hora de inicio"}
+                  </SelectValue>
+                </SelectTrigger>
+                <SelectContent>
+                  {availableStartTimes.map((slot, index) => (
+                    <SelectItem
+                      key={index}
+                      value={slot.time.toISOString()}
+                      disabled={!slot.available || slot.isPast}
+                      className={!slot.available || slot.isPast ? "opacity-50" : ""}
+                    >
+                      {format(slot.time, "h:mm a")}
+                      {!slot.available && " (No disponible)"}
+                      {slot.isPast && " (Hora pasada)"}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </motion.div>
+
+            <motion.div
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ duration: 0.3, delay: 0.6 }}
+              className="space-y-2"
+            >
+              <Label htmlFor="endTime">Hora de Finalización</Label>
+              <Select
+                disabled={!startTime || availableEndTimes.length === 0}
+                value={endTime?.toISOString()}
+                onValueChange={(value) => setEndTime(new Date(value))}
+              >
+                <SelectTrigger id="endTime" className="w-full">
+                  <SelectValue placeholder="Selecciona hora de finalización">
+                    {endTime ? format(endTime, "h:mm a") : "Selecciona hora de finalización"}
+                  </SelectValue>
+                </SelectTrigger>
+                <SelectContent>
+                  {availableEndTimes.map((slot, index) => (
+                    <SelectItem
+                      key={index}
+                      value={slot.time.toISOString()}
+                      disabled={!slot.available || slot.isPast}
+                      className={!slot.available || slot.isPast ? "opacity-50" : ""}
+                    >
+                      {format(slot.time, "h:mm a")}
+                      {!slot.available && " (No disponible)"}
+                      {slot.isPast && " (Hora pasada)"}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">Máximo 6 horas, debe terminar el mismo día</p>
+            </motion.div>
+          </CardContent>
+          <CardFooter>
+            <AnimatedButton
+              type="submit"
+              className="w-full bg-orange-600 hover:bg-orange-700 text-white"
+              disabled={isLoading || !date || !startTime || !endTime}
+              whileHover={{ scale: 1.03 }}
+              whileTap={{ scale: 0.97 }}
+            >
+              {isLoading ? "Guardando..." : initialData ? "Actualizar Reserva" : "Crear Reserva"}
+            </AnimatedButton>
+          </CardFooter>
+        </form>
+        <ReservationSuccessDialog
+          open={showSuccessDialog}
+          onOpenChange={handleSuccessDialogClose}
+          reservation={createdReservation}
+          cancellationCode={generatedCode}
+        />
+      </Card>
+    </motion.div>
   )
 }

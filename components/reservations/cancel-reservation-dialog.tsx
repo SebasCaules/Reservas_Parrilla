@@ -28,10 +28,10 @@ export function CancelReservationDialog({ reservationId, reservationTitle }: Can
   const [code, setCode] = useState("")
 
   async function handleCancelReservation() {
-    if (!code || code.length !== 6) {
+    if (!code || code.length !== 4) {
       toast({
         title: "Error",
-        description: "Por favor ingresa el código de 6 dígitos",
+        description: "Por favor ingresa el código de 4 dígitos",
         variant: "destructive",
       })
       return
@@ -78,8 +78,8 @@ export function CancelReservationDialog({ reservationId, reservationTitle }: Can
         <DialogHeader>
           <DialogTitle>Cancelar Reserva</DialogTitle>
           <DialogDescription>
-            Para cancelar la reserva "{reservationTitle}", ingresa el código de 6 dígitos que recibiste por correo
-            electrónico.
+            Para cancelar la reserva "{reservationTitle}", ingresa el código de 4 dígitos que recibiste al hacer la
+            reserva.
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-4 py-4">
@@ -87,10 +87,10 @@ export function CancelReservationDialog({ reservationId, reservationTitle }: Can
             <Label htmlFor="cancellationCode">Código de cancelación</Label>
             <Input
               id="cancellationCode"
-              placeholder="123456"
+              placeholder="1234"
               value={code}
               onChange={(e) => setCode(e.target.value)}
-              maxLength={6}
+              maxLength={4}
             />
           </div>
         </div>
@@ -98,7 +98,7 @@ export function CancelReservationDialog({ reservationId, reservationTitle }: Can
           <Button variant="outline" onClick={() => setIsOpen(false)} disabled={isLoading}>
             Cancelar
           </Button>
-          <Button variant="destructive" onClick={handleCancelReservation} disabled={isLoading || code.length !== 6}>
+          <Button variant="destructive" onClick={handleCancelReservation} disabled={isLoading || code.length !== 4}>
             {isLoading ? "Cancelando..." : "Confirmar Cancelación"}
           </Button>
         </DialogFooter>

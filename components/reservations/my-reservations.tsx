@@ -3,9 +3,8 @@
 import { useState } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { createClientSupabaseClient } from "@/lib/supabase/client"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import {
   Dialog,
   DialogContent,
@@ -18,6 +17,10 @@ import { toast } from "@/components/ui/use-toast"
 import type { Reservation } from "@/lib/types/database"
 import { formatDate, formatTime } from "@/lib/utils/date"
 import { CalendarClock, Edit, Trash } from "lucide-react"
+import { deleteReservation } from "@/lib/actions/reservation-actions"
+import { AnimatedCard } from "@/components/ui/animated-card"
+import { AnimatedButton } from "@/components/ui/animated-button"
+import { AnimatedList } from "@/components/ui/animated-list"
 
 interface MyReservationsProps {
   reservations: Reservation[]
@@ -25,7 +28,6 @@ interface MyReservationsProps {
 
 export function MyReservations({ reservations }: MyReservationsProps) {
   const router = useRouter()
-  const supabase = createClientSupabaseClient()
   const [isLoading, setIsLoading] = useState(false)
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [reservationToDelete, setReservationToDelete] = useState<string | null>(null)
@@ -51,20 +53,18 @@ export function MyReservations({ reservations }: MyReservationsProps) {
     setIsLoading(true)
 
     try {
-      const { error } = await supabase.from("reservations").delete().eq("id", reservationToDelete)
-
-      if (error) throw error
+      await deleteReservation(reservationToDelete)
 
       toast({
-        title: "Reservation deleted",
-        description: "Your reservation has been cancelled successfully.",
+        title: "Reserva eliminada",
+        description: "Tu reserva ha sido cancelada exitosamente.",
       })
 
       router.refresh()
     } catch (error: any) {
       toast({
         title: "Error",
-        description: error.message || "Something went wrong",
+        description: error.message || "Algo salió mal",
         variant: "destructive",
       })
     } finally {
@@ -76,103 +76,121 @@ export function MyReservations({ reservations }: MyReservationsProps) {
 
   return (
     <>
-      <Card>
+      <AnimatedCard>
         <CardHeader>
           <CardTitle className="flex items-center justify-between">
-            <span>My Reservations</span>
+            <span>Mis Reservas</span>
             <Link href="/reservations/new">
-              <Button size="sm">New Reservation</Button>
+              <AnimatedButton size="sm">Nueva Reserva</AnimatedButton>
             </Link>
           </CardTitle>
-          <CardDescription>Manage your grill reservations</CardDescription>
+          <CardDescription>Administra tus reservas de parrilla</CardDescription>
         </CardHeader>
         <CardContent>
           {reservations.length === 0 ? (
             <div className="text-center py-8">
               <CalendarClock className="mx-auto h-12 w-12 text-muted-foreground opacity-50" />
-              <h3 className="mt-4 text-lg font-medium">No reservations yet</h3>
-              <p className="mt-2 text-sm text-muted-foreground">You haven't made any grill reservations yet.</p>
+              <h3 className="mt-4 text-lg font-medium">No tienes reservas</h3>
+              <p className="mt-2 text-sm text-muted-foreground">Aún no has realizado ninguna reserva de parrilla.</p>
               <Link href="/reservations/new" className="mt-4 inline-block">
-                <Button>Book the Grill</Button>
+                <AnimatedButton>Reservar la Parrilla</AnimatedButton>
               </Link>
             </div>
           ) : (
             <div className="space-y-6">
               {upcomingReservations.length > 0 && (
                 <div>
-                  <h3 className="font-medium mb-3">Upcoming Reservations</h3>
-                  <div className="space-y-3">
-                    {upcomingReservations.map((reservation) => (
-                      <div key={reservation.id} className="flex items-center justify-between rounded-lg border p-4">
-                        <div>
-                          <h4 className="font-medium">{reservation.title}</h4>
-                          <p className="text-sm text-muted-foreground">
-                            {formatDate(reservation.start_time)} • {formatTime(reservation.start_time)} -{" "}
-                            {formatTime(reservation.end_time)}
-                          </p>
-                        </div>
-                        <div className="flex space-x-2">
-                          <Link href={`/reservations/edit/${reservation.id}`}>
-                            <Button size="icon" variant="outline">
-                              <Edit className="h-4 w-4" />
-                              <span className="sr-only">Edit</span>
+                  <h3 className="font-medium mb-3">Próximas Reservas</h3>
+                  <AnimatedList>
+                    {upcomingReservations.map((reservation) => {
+                      const startDate = new Date(reservation.start_time)
+                      const endDate = new Date(reservation.end_time)
+
+                      return (
+                        <div key={reservation.id} className="flex items-center justify-between rounded-lg border p-4">
+                          <div>
+                            <h4 className="font-medium">{reservation.title}</h4>
+                            <p className="text-sm">
+                              <span className="font-medium">Fecha:</span> {formatDate(startDate)}
+                            </p>
+                            <p className="text-sm">
+                              <span className="font-medium">Horario:</span> {formatTime(startDate)} -{" "}
+                              {formatTime(endDate)}
+                            </p>
+                            <p className="text-sm text-muted-foreground">Unidad {reservation.apartment_number}</p>
+                          </div>
+                          <div className="flex space-x-2">
+                            <Link href={`/reservations/edit/${reservation.id}`}>
+                              <Button size="icon" variant="outline">
+                                <Edit className="h-4 w-4" />
+                                <span className="sr-only">Editar</span>
+                              </Button>
+                            </Link>
+                            <Button size="icon" variant="outline" onClick={() => handleDeleteClick(reservation.id)}>
+                              <Trash className="h-4 w-4" />
+                              <span className="sr-only">Eliminar</span>
                             </Button>
-                          </Link>
-                          <Button size="icon" variant="outline" onClick={() => handleDeleteClick(reservation.id)}>
-                            <Trash className="h-4 w-4" />
-                            <span className="sr-only">Delete</span>
-                          </Button>
+                          </div>
                         </div>
-                      </div>
-                    ))}
-                  </div>
+                      )
+                    })}
+                  </AnimatedList>
                 </div>
               )}
 
               {pastReservations.length > 0 && (
                 <div>
-                  <h3 className="font-medium mb-3">Past Reservations</h3>
-                  <div className="space-y-3">
-                    {pastReservations.map((reservation) => (
-                      <div
-                        key={reservation.id}
-                        className="flex items-center justify-between rounded-lg border p-4 opacity-70"
-                      >
-                        <div>
-                          <h4 className="font-medium">{reservation.title}</h4>
-                          <p className="text-sm text-muted-foreground">
-                            {formatDate(reservation.start_time)} • {formatTime(reservation.start_time)} -{" "}
-                            {formatTime(reservation.end_time)}
-                          </p>
+                  <h3 className="font-medium mb-3">Reservas Pasadas</h3>
+                  <AnimatedList>
+                    {pastReservations.map((reservation) => {
+                      const startDate = new Date(reservation.start_time)
+                      const endDate = new Date(reservation.end_time)
+
+                      return (
+                        <div
+                          key={reservation.id}
+                          className="flex items-center justify-between rounded-lg border p-4 opacity-70"
+                        >
+                          <div>
+                            <h4 className="font-medium">{reservation.title}</h4>
+                            <p className="text-sm">
+                              <span className="font-medium">Fecha:</span> {formatDate(startDate)}
+                            </p>
+                            <p className="text-sm">
+                              <span className="font-medium">Horario:</span> {formatTime(startDate)} -{" "}
+                              {formatTime(endDate)}
+                            </p>
+                            <p className="text-sm text-muted-foreground">Unidad {reservation.apartment_number}</p>
+                          </div>
+                          <Button size="icon" variant="outline" onClick={() => handleDeleteClick(reservation.id)}>
+                            <Trash className="h-4 w-4" />
+                            <span className="sr-only">Eliminar</span>
+                          </Button>
                         </div>
-                        <Button size="icon" variant="outline" onClick={() => handleDeleteClick(reservation.id)}>
-                          <Trash className="h-4 w-4" />
-                          <span className="sr-only">Delete</span>
-                        </Button>
-                      </div>
-                    ))}
-                  </div>
+                      )
+                    })}
+                  </AnimatedList>
                 </div>
               )}
             </div>
           )}
         </CardContent>
-      </Card>
+      </AnimatedCard>
 
       <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Cancel Reservation</DialogTitle>
+            <DialogTitle>Cancelar Reserva</DialogTitle>
             <DialogDescription>
-              Are you sure you want to cancel this reservation? This action cannot be undone.
+              ¿Estás seguro de que deseas cancelar esta reserva? Esta acción no se puede deshacer.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
             <Button variant="outline" onClick={() => setDeleteDialogOpen(false)} disabled={isLoading}>
-              Keep Reservation
+              Mantener Reserva
             </Button>
             <Button variant="destructive" onClick={handleDeleteConfirm} disabled={isLoading}>
-              {isLoading ? "Cancelling..." : "Cancel Reservation"}
+              {isLoading ? "Cancelando..." : "Cancelar Reserva"}
             </Button>
           </DialogFooter>
         </DialogContent>

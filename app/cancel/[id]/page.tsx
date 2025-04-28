@@ -1,20 +1,18 @@
 import { notFound } from "next/navigation"
 import Link from "next/link"
-import { createServerSupabaseClient } from "@/lib/supabase/server"
 import { SiteHeader } from "@/components/layout/site-header"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { formatDateTime } from "@/lib/utils/date"
+import { getReservationById, deleteReservation } from "@/lib/actions/reservation-actions"
 
 export default async function CancelReservationPage({
   params,
 }: {
   params: { id: string }
 }) {
-  const supabase = createServerSupabaseClient()
-
   // Obtener la reserva
-  const { data: reservation } = await supabase.from("reservations").select("*").eq("id", params.id).single()
+  const reservation = await getReservationById(params.id)
 
   if (!reservation) {
     notFound()
@@ -23,9 +21,7 @@ export default async function CancelReservationPage({
   async function cancelReservation() {
     "use server"
 
-    const supabase = createServerSupabaseClient()
-    await supabase.from("reservations").delete().eq("id", params.id)
-
+    await deleteReservation(params.id)
     return { success: true }
   }
 
@@ -54,11 +50,6 @@ export default async function CancelReservationPage({
                   <span className="font-medium">Horario:</span> {formatDateTime(reservation.start_time)} a{" "}
                   {formatDateTime(reservation.end_time)}
                 </div>
-                {reservation.description && (
-                  <div>
-                    <span className="font-medium">Descripción:</span> {reservation.description}
-                  </div>
-                )}
               </div>
             </div>
           </CardContent>
