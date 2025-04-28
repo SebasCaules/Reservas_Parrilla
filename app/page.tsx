@@ -1,28 +1,20 @@
-import { getAllReservations } from "@/lib/actions/reservation-actions"
-import { addDays } from "date-fns"
+import { getUpcomingRealTimeReservations } from "@/lib/services/real-time-service"
 import { HomeContent } from "@/components/home/home-content"
 import { AnimatedLayout } from "@/components/layout/animated-layout"
+import { unstable_noStore } from "next/cache"
 
-// Configuración de caché para asegurar datos frescos
+// Desactivar completamente la caché para esta página
 export const dynamic = "force-dynamic"
-export const revalidate = 0
+export const fetchCache = "force-no-store"
 
 export default async function Home() {
+  // Desactivar explícitamente el almacenamiento en caché
+  unstable_noStore()
+
+  // Usar el nuevo servicio en tiempo real
+  const upcomingReservations = await getUpcomingRealTimeReservations(10)
   const today = new Date()
-  const tenDaysLater = addDays(today, 10)
 
-  // Fetch data on the server
-  const allReservations = await getAllReservations()
-
-  // Filter reservations for the next 10 days
-  const upcomingReservations = allReservations
-    .filter((reservation) => {
-      const reservationDate = new Date(reservation.start_time)
-      return reservationDate >= today && reservationDate <= tenDaysLater
-    })
-    .sort((a, b) => new Date(a.start_time).getTime() - new Date(b.start_time).getTime())
-
-  // Pass the pre-fetched data to the client component
   return (
     <AnimatedLayout>
       <HomeContent upcomingReservations={upcomingReservations} today={today} />

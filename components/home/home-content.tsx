@@ -13,9 +13,10 @@ import { AnimatedTitle } from "@/components/ui/animated-title"
 import { AnimatedList } from "@/components/ui/animated-list"
 import { motion } from "framer-motion"
 import type { Reservation } from "@/lib/types/database"
-
-// Importar el botón de actualización
 import { RefreshButton } from "@/components/refresh-button"
+import { useState, useEffect } from "react"
+// Importar el componente de actualización automática
+import { AutoRefresh } from "@/components/auto-refresh"
 
 interface HomeContentProps {
   upcomingReservations: Reservation[]
@@ -23,6 +24,14 @@ interface HomeContentProps {
 }
 
 export function HomeContent({ upcomingReservations, today }: HomeContentProps) {
+  // Estado para almacenar la hora de la última actualización
+  const [lastUpdated, setLastUpdated] = useState<Date>(new Date())
+
+  // Actualizar la hora de la última actualización cuando cambian las reservas
+  useEffect(() => {
+    setLastUpdated(new Date())
+  }, [upcomingReservations])
+
   // Verificar si hay más de 4 reservas
   const hasMoreThanFourReservations = upcomingReservations.length > 4
 
@@ -86,6 +95,10 @@ export function HomeContent({ upcomingReservations, today }: HomeContentProps) {
                       {upcomingReservations.length === 0
                         ? "No hay reservas programadas"
                         : `${upcomingReservations.length} reserva(s) programada(s)`}
+                      <div className="text-xs mt-1 text-gray-400">
+                        Última actualización: {format(lastUpdated, "HH:mm:ss")}
+                        <AutoRefresh interval={60} /> {/* Actualizar cada 60 segundos */}
+                      </div>
                     </CardDescription>
                   </CardHeader>
                   <CardContent>

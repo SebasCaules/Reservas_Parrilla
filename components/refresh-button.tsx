@@ -11,12 +11,15 @@ export function RefreshButton() {
 
   const handleRefresh = () => {
     setIsRefreshing(true)
-    // Forzar una actualización completa de la página
+
+    // Forzar una actualización completa
+    // 1. Limpiar la caché del router
     router.refresh()
-    // Simular un pequeño retraso para la animación
-    setTimeout(() => {
-      setIsRefreshing(false)
-    }, 1000)
+
+    // 2. Recargar la página completamente para evitar cualquier caché
+    window.location.reload()
+
+    // No necesitamos resetear isRefreshing ya que la página se recargará
   }
 
   return (
