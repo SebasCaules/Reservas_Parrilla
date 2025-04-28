@@ -1,11 +1,12 @@
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { SiteHeader } from "@/components/layout/site-header"
-import { Flame, Calendar, Users, AlertTriangle } from "lucide-react"
+import { Flame, Calendar, Users } from "lucide-react"
 import { formatTime, formatDate } from "@/lib/utils/date"
 import { format, addDays } from "date-fns"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { getAllReservations } from "@/lib/actions/reservation-actions"
+import { AlertMessage } from "@/components/ui/alert-message"
 
 export default async function Home() {
   const today = new Date()
@@ -78,17 +79,18 @@ export default async function Home() {
                         reservationsToShow.map((reservation) => (
                           <div
                             key={reservation.id}
-                            className="flex items-center justify-between p-3 rounded-lg bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-900"
+                            className="flex flex-col space-y-2 p-3 rounded-lg bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-900"
                           >
-                            <div className="flex flex-col">
+                            <div className="flex items-center justify-between">
                               <span className="font-medium">{formatDate(reservation.start_time)}</span>
-                              <span className="text-sm">
-                                {formatTime(reservation.start_time)} - {formatTime(reservation.end_time)}
-                              </span>
+                              <span className="text-sm">{reservation.apartment_number}</span>
                             </div>
-                            <span className="text-sm text-red-600 dark:text-red-400">
-                              {reservation.title} - {reservation.name} (Apto {reservation.apartment_number})
-                            </span>
+                            <div className="text-sm">
+                              {formatTime(reservation.start_time)} - {formatTime(reservation.end_time)}
+                            </div>
+                            <div className="text-sm text-blue-600 dark:text-blue-400 truncate">
+                              {reservation.title} - {reservation.name}
+                            </div>
                           </div>
                         ))
                       ) : (
@@ -100,11 +102,10 @@ export default async function Home() {
                     </div>
 
                     {hasMoreThanFourReservations && (
-                      <div className="flex items-center text-red-500 mt-4 text-sm">
-                        <AlertTriangle className="h-4 w-4 mr-1" />
+                      <AlertMessage className="mt-4">
                         Hay {upcomingReservations.length} reservas en los próximos días. Consulta el calendario para ver
                         todas.
-                      </div>
+                      </AlertMessage>
                     )}
                   </CardContent>
                   <CardFooter>

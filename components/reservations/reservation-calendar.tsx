@@ -5,11 +5,12 @@ import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Calendar } from "@/components/ui/calendar"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
+import { AlertMessage } from "@/components/ui/alert-message"
 import type { Reservation } from "@/lib/types/database"
 import { formatTime, isPastReservation } from "@/lib/utils/date"
 import { format, isSameDay, parseISO, isBefore, startOfDay } from "date-fns"
 import { es } from "date-fns/locale"
-import { CalendarIcon, PlusCircle, AlertTriangle } from "lucide-react"
+import { CalendarIcon, PlusCircle } from "lucide-react"
 
 interface ReservationCalendarProps {
   reservations: Reservation[]
@@ -154,12 +155,11 @@ export function ReservationCalendar({ reservations }: ReservationCalendarProps) 
               : `${sortedReservations.length} reserva(s) programada(s)`}
           </CardDescription>
           {selectedDateReservationsCount >= 2 && (
-            <div className="flex items-center text-red-500 mt-2 text-sm">
-              <AlertTriangle className="h-4 w-4 mr-1" />
+            <AlertMessage variant="warning" className="mt-2">
               {selectedDateReservationsCount >= 4
                 ? `¡Atención! Este día tiene ${selectedDateReservationsCount} reservas. Es muy probable que haya superposición de horarios.`
                 : `Este día tiene ${selectedDateReservationsCount} reservas. Es posible que haya superposición de horarios.`}
-            </div>
+            </AlertMessage>
           )}
         </CardHeader>
         <CardContent>

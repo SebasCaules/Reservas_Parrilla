@@ -14,12 +14,13 @@ import { Textarea } from "@/components/ui/textarea"
 import { toast } from "@/components/ui/use-toast"
 import { format, addMinutes, parseISO, isBefore, startOfDay, isSameDay } from "date-fns"
 import { es } from "date-fns/locale"
-import { CalendarIcon, AlertTriangle } from "lucide-react"
+import { CalendarIcon } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import type { Reservation } from "@/lib/types/database"
 import { generateTimeSlots, isValidReservation } from "@/lib/utils/date"
 import { createReservation, updateReservation } from "@/lib/actions/reservation-actions"
+import { AlertMessage } from "@/components/ui/alert-message"
 
 interface ReservationFormProps {
   existingReservations: Reservation[]
@@ -211,12 +212,11 @@ export function ReservationForm({ existingReservations, initialData, initialDate
           {initialData ? "Actualiza los detalles de tu reserva" : "Reserva la parrilla para tu evento"}
         </CardDescription>
         {reservationsCount >= 2 && (
-          <div className="flex items-center text-red-500 mt-2 text-sm">
-            <AlertTriangle className="h-4 w-4 mr-1" />
+          <AlertMessage className="mt-2">
             {reservationsCount >= 4
               ? `¡Atención! Este día tiene ${reservationsCount} reservas. Es muy probable que haya superposición de horarios.`
               : `Este día tiene ${reservationsCount} reservas. Es posible que haya superposición de horarios.`}
-          </div>
+          </AlertMessage>
         )}
       </CardHeader>
       <form onSubmit={handleSubmit}>
@@ -351,7 +351,11 @@ export function ReservationForm({ existingReservations, initialData, initialDate
           </div>
         </CardContent>
         <CardFooter>
-          <Button type="submit" className="w-full" disabled={isLoading || !date || !startTime || !endTime}>
+          <Button
+            type="submit"
+            className="w-full bg-orange-600 hover:bg-orange-700"
+            disabled={isLoading || !date || !startTime || !endTime}
+          >
             {isLoading ? "Guardando..." : initialData ? "Actualizar Reserva" : "Crear Reserva"}
           </Button>
         </CardFooter>
